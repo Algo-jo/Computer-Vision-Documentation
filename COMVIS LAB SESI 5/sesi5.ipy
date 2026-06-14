@@ -1,0 +1,69 @@
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+#==========================================================================================
+
+catur = cv2.imread('image.jpg')
+catur = cv2.resize(catur, (500, 500), interpolation=cv2.INTER_AREA)
+catur_gray = cv2.cvtColor(catur, cv2.COLOR_BGR2GRAY)
+
+harris = cv2.cornerHarris(catur_gray, 2, 5, 0.0002)
+harris_result = catur.copy()
+harris_result[harris > harris.max() * 0.01] = [0, 0, 255]
+# cv2.imshow("Harris Result", harris_result)
+# cv2.waitKey(0)
+
+_, harris_threshold = cv2.threshold(
+    harris, harris.max() * 0.01, 255, cv2.THRESH_BINARY
+    )
+np.uint8(harris_threshold)
+subpix_result = catur.copy()
+subpix_result[catur_gray < harris_threshold] = [0, 0, 255]
+# cv2.imshow("Subpix Threshold", subpix_result)
+# cv2.waitKey(0)
+
+# Criteria, MaxIter, Threshold
+#==========================================================================================
+_, _, _, centroid = cv2.connectedComponentsWithStats(harris_threshold)
+
+criteria = (
+    cv2.TermCriteria_MAX_ITER + cv2.TERM_CRITERIA_EPS_EPS,
+    100,
+    0.01
+    )
+centroid = np.float32(centroid)
+corner_subpix = cv2.cornerSubPix(catur_gray, 
+    centroid, 
+    (5, 5), 
+    (-1, -1), 
+    criteria
+    )
+
+catur_final = subpix_result.copy()
+catur_final_clean = catur.copy()
+corner_subpix = np.uint16(corner_subpix)
+for corner in corner_subpix:
+    x = corner[0]
+    y = corner[1]
+    catur_final[y][x] = [0, 0, 255]
+    catur_final_clean[y][x] = [0, 255, 0]
+
+    
+cv2.imshow("Subpix Final", catur_final)
+cv2.waitKey(0)
+cv2.imshow("Subpix Final", catur_final_clean)
+cv2.waitKey(0)
+
+centroid_view = catur.copy()
+centroid = np.int16(centroid)
+for corner in centroid:
+    x = corner[0]
+    y = corner[1]
+    centroid_view[y][x] = [0, 255, 0]
+cv2.imshow("Centroid", centroid_view)
+cv2.waitKey(0)
+
+
+# cv2.imshow("Catur", catur)
+# cv2.waitKey(0)
+cv2.destroyAllWindows()
